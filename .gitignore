@@ -54,3 +54,10 @@ coverage/
 
 # Misc
 *.pem
+
+# Claude Code internal files
+.claude/
+.playwright-mcp/
+
+# PDF documents
+*.pdf
