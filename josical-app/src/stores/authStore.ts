@@ -17,6 +17,7 @@ type AuthActions = {
   readonly logout: () => Promise<void>
   readonly fetchProfile: () => Promise<void>
   readonly setProfile: (profile: UserProfile) => void
+  readonly loginWithGoogle: (idToken: string) => Promise<void>
   readonly resetPassword: (email: string) => Promise<void>
 }
 
@@ -95,6 +96,23 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   },
 
   setProfile: (profile) => set({ profile }),
+
+  loginWithGoogle: async (idToken) => {
+    set({ isLoading: true })
+    try {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      })
+      if (error) throw error
+      set({ session: data.session })
+      if (data.session) {
+        await get().fetchProfile()
+      }
+    } finally {
+      set({ isLoading: false })
+    }
+  },
 
   resetPassword: async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email)

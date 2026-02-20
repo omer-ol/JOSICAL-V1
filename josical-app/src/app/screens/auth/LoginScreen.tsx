@@ -1,23 +1,41 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, KeyboardAvoidingView,
-  Platform, ScrollView, Alert, TouchableOpacity,
+  Platform, ScrollView, TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Button, Input } from '../../../components/ui'
+import { Button, Input, Divider, GoogleSignInButton, ErrorBanner } from '../../../components/ui'
 import { colors, spacing, fontSize, fontWeight } from '../../../constants/theme'
 import { loginSchema } from '../../../lib/validation'
+import { useGoogleAuth, getGoogleIdToken } from '../../../lib/googleAuth'
 import { useAuthStore } from '../../../stores/authStore'
 import type { AuthScreenProps } from '../../navigation/types'
 
 export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [authError, setAuthError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const { login, isLoading } = useAuthStore()
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const { login, loginWithGoogle, isLoading } = useAuthStore()
+  const { request, response, promptAsync } = useGoogleAuth()
+
+  useEffect(() => {
+    const idToken = getGoogleIdToken(response)
+    if (!idToken) return
+
+    setGoogleLoading(true)
+    setAuthError(null)
+    loginWithGoogle(idToken)
+      .catch(() => {
+        setAuthError('Could not complete Google sign-in. Please try again.')
+      })
+      .finally(() => setGoogleLoading(false))
+  }, [response, loginWithGoogle])
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setAuthError(null)
     if (errors[field]) {
       setErrors((prev) => {
         const { [field]: _, ...rest } = prev
@@ -27,6 +45,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   }
 
   const handleLogin = async () => {
+    setAuthError(null)
     const result = loginSchema.safeParse(form)
     if (!result.success) {
       const fieldErrors: Record<string, string> = {}
@@ -39,9 +58,14 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
     }
     try {
       await login(result.data.email, result.data.password)
-    } catch (error) {
-      Alert.alert('Login Failed', 'Invalid email or password. Please try again.')
+    } catch {
+      setAuthError('Incorrect email or password. Please try again.')
     }
+  }
+
+  const handleGoogleSignIn = () => {
+    setAuthError(null)
+    promptAsync()
   }
 
   return (
@@ -54,6 +78,16 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 
           <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>Good to see you again</Text>
+
+          <ErrorBanner message={authError} onDismiss={() => setAuthError(null)} />
+
+          <GoogleSignInButton
+            onPress={handleGoogleSignIn}
+            isLoading={googleLoading}
+            disabled={!request}
+          />
+
+          <Divider label="or" />
 
           <Input
             label="Email"

@@ -1,23 +1,41 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, KeyboardAvoidingView,
-  Platform, ScrollView, Alert, TouchableOpacity,
+  Platform, ScrollView, TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Button, Input } from '../../../components/ui'
+import { Button, Input, Divider, GoogleSignInButton, ErrorBanner } from '../../../components/ui'
 import { colors, spacing, fontSize, fontWeight } from '../../../constants/theme'
 import { registerSchema } from '../../../lib/validation'
+import { useGoogleAuth, getGoogleIdToken } from '../../../lib/googleAuth'
 import { useAuthStore } from '../../../stores/authStore'
 import type { AuthScreenProps } from '../../navigation/types'
 
 export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [authError, setAuthError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const { register, isLoading } = useAuthStore()
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const { register, loginWithGoogle, isLoading } = useAuthStore()
+  const { request, response, promptAsync } = useGoogleAuth()
+
+  useEffect(() => {
+    const idToken = getGoogleIdToken(response)
+    if (!idToken) return
+
+    setGoogleLoading(true)
+    setAuthError(null)
+    loginWithGoogle(idToken)
+      .catch(() => {
+        setAuthError('Could not complete Google sign-in. Please try again.')
+      })
+      .finally(() => setGoogleLoading(false))
+  }, [response, loginWithGoogle])
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setAuthError(null)
     if (errors[field]) {
       setErrors((prev) => {
         const { [field]: _, ...rest } = prev
@@ -27,6 +45,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   }
 
   const handleRegister = async () => {
+    setAuthError(null)
     const result = registerSchema.safeParse(form)
     if (!result.success) {
       const fieldErrors: Record<string, string> = {}
@@ -40,9 +59,14 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
     try {
       await register(result.data.name, result.data.email, result.data.password)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Registration failed'
-      Alert.alert('Registration Error', message)
+      const message = error instanceof Error ? error.message : 'Registration failed. Please try again.'
+      setAuthError(message)
     }
+  }
+
+  const handleGoogleSignIn = () => {
+    setAuthError(null)
+    promptAsync()
   }
 
   return (
@@ -55,6 +79,16 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
 
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Join the JoSial community</Text>
+
+          <ErrorBanner message={authError} onDismiss={() => setAuthError(null)} />
+
+          <GoogleSignInButton
+            onPress={handleGoogleSignIn}
+            isLoading={googleLoading}
+            disabled={!request}
+          />
+
+          <Divider label="or" />
 
           <Input
             label="Full Name"
