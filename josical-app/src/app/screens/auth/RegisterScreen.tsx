@@ -15,6 +15,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [authError, setAuthError] = useState<string | null>(null)
+  const [confirmationSent, setConfirmationSent] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const { register, loginWithGoogle, isLoading } = useAuthStore()
@@ -59,6 +60,10 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
     try {
       await register(result.data.name, result.data.email, result.data.password)
     } catch (error) {
+      if (error instanceof Error && error.message === 'CONFIRMATION_REQUIRED') {
+        setConfirmationSent(true)
+        return
+      }
       const message = error instanceof Error ? error.message : 'Registration failed. Please try again.'
       setAuthError(message)
     }
@@ -67,6 +72,23 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   const handleGoogleSignIn = () => {
     setAuthError(null)
     promptAsync()
+  }
+
+  if (confirmationSent) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.confirmationContainer}>
+          <Text style={styles.confirmationEmoji}>📧</Text>
+          <Text style={styles.title}>Check your email</Text>
+          <Text style={styles.confirmationText}>
+            We sent a confirmation link to {form.email}. Please check your inbox and click the link to activate your account.
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.footerLink}>Go to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    )
   }
 
   return (
@@ -186,4 +208,18 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   footerText: { fontSize: fontSize.md, color: colors.textSecondary },
   footerLink: { fontSize: fontSize.md, color: colors.primary, fontWeight: fontWeight.semibold },
+  confirmationContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  confirmationEmoji: { fontSize: 56, marginBottom: spacing.lg },
+  confirmationText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
 })

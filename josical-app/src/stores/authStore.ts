@@ -56,10 +56,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         options: { data: { name } },
       })
       if (error) throw error
-      set({ session: data.session })
-      if (data.session) {
-        await get().fetchProfile()
+      if (!data.session) {
+        throw new Error('CONFIRMATION_REQUIRED')
       }
+      set({ session: data.session })
+      await get().fetchProfile()
     } finally {
       set({ isLoading: false })
     }
