@@ -1,10 +1,10 @@
 import React from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
-import { HomeScreen } from '../screens/home/HomeScreen'
-import { DiscoverScreen } from '../screens/discover/DiscoverScreen'
+import { HomeStackNavigator } from './HomeStackNavigator'
+import { DiscoverStackNavigator } from './DiscoverStackNavigator'
 import { ConversationsScreen } from '../screens/messages/ConversationsScreen'
-import { FriendsScreen } from '../screens/friends/FriendsScreen'
+import { FriendsStackNavigator } from './FriendsStackNavigator'
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen'
 import { colors, fontSize } from '../../constants/theme'
 import type { MainTabParamList } from './types'
@@ -47,10 +47,10 @@ export function MainTabNavigator() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Discover" component={DiscoverScreen} />
+      <Tab.Screen name="Home" component={HomeStackNavigator} />
+      <Tab.Screen name="Discover" component={DiscoverStackNavigator} />
       <Tab.Screen name="Messages" component={ConversationsScreen} />
-      <Tab.Screen name="Friends" component={FriendsScreen} />
+      <Tab.Screen name="Friends" component={FriendsStackNavigator} />
       <Tab.Screen name="Profile" component={MyProfileScreen} />
     </Tab.Navigator>
   )

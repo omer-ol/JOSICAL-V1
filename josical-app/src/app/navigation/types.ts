@@ -56,3 +56,17 @@ export type OnboardingScreenProps<T extends keyof OnboardingStackParamList> =
 
 export type MainTabProps<T extends keyof MainTabParamList> =
   BottomTabScreenProps<MainTabParamList, T>
+
+export type DiscoverScreenProps<T extends keyof DiscoverStackParamList> =
+  NativeStackScreenProps<DiscoverStackParamList, T>
+
+export type FriendsScreenProps<T extends keyof FriendsStackParamList> =
+  NativeStackScreenProps<FriendsStackParamList, T>
+
+export type HomeStackParamList = {
+  HomeScreen: undefined
+  UserProfile: { userId: string }
+}
+
+export type HomeScreenProps<T extends keyof HomeStackParamList> =
+  NativeStackScreenProps<HomeStackParamList, T>
