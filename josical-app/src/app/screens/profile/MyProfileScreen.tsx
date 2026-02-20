@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, TextInput, FlatList,
@@ -7,13 +7,74 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import { useAuthStore } from '../../../stores/authStore'
 import { useProfileStore } from '../../../stores/profileStore'
+import { useDogsStore } from '../../../stores/dogsStore'
 import { supabase } from '../../../lib/supabase'
 import { Avatar } from '../../../components/ui/Avatar'
 import { Button } from '../../../components/ui'
 import { getCityNames, getNeighborhoods, getLocationCoords } from '../../../constants/locations'
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadow } from '../../../constants/theme'
+import type { Dog } from '../../../types'
 
-export function MyProfileScreen() {
+type ProfileTab = 'owner' | 'dog'
+
+function TabSwitcher({ activeTab, onTabChange }: {
+  readonly activeTab: ProfileTab
+  readonly onTabChange: (tab: ProfileTab) => void
+}) {
+  return (
+    <View style={tabStyles.container}>
+      <TouchableOpacity
+        style={[tabStyles.tab, activeTab === 'owner' && tabStyles.activeTab]}
+        onPress={() => onTabChange('owner')}
+        activeOpacity={0.7}
+      >
+        <Text style={[tabStyles.tabText, activeTab === 'owner' && tabStyles.activeTabText]}>
+          Owner
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[tabStyles.tab, activeTab === 'dog' && tabStyles.activeTab]}
+        onPress={() => onTabChange('dog')}
+        activeOpacity={0.7}
+      >
+        <Text style={[tabStyles.tabText, activeTab === 'dog' && tabStyles.activeTabText]}>
+          Dog
+        </Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+const tabStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.sm,
+    padding: 3,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.lg,
+  },
+  tab: {
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.xs,
+  },
+  activeTab: {
+    backgroundColor: colors.surface,
+    ...shadow.xs,
+  },
+  tabText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.textSecondary,
+  },
+  activeTabText: {
+    color: colors.text,
+    fontWeight: fontWeight.semibold,
+  },
+})
+
+function OwnerProfile() {
   const { profile, setProfile } = useAuthStore()
   const { updateProfile } = useProfileStore()
 
@@ -98,11 +159,8 @@ export function MyProfileScreen() {
   const displayUri = avatarUri ?? profile?.avatar_url ?? null
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>My Profile</Text>
-
-        {/* Avatar */}
         <TouchableOpacity style={styles.avatarWrapper} onPress={pickAvatar} activeOpacity={0.8}>
           <Avatar uri={displayUri} name={profile?.name} size="xxl" />
           <View style={styles.cameraBadge}>
@@ -112,7 +170,6 @@ export function MyProfileScreen() {
 
         <Text style={styles.name}>{profile?.name ?? ''}</Text>
 
-        {/* Bio */}
         <View style={styles.fieldCard}>
           <Text style={styles.fieldLabel}>Bio</Text>
           <TextInput
@@ -128,7 +185,6 @@ export function MyProfileScreen() {
           <Text style={styles.charCount}>{bio.length}/200</Text>
         </View>
 
-        {/* City */}
         <TouchableOpacity style={styles.fieldCard} onPress={() => setShowCityPicker(true)}>
           <Text style={styles.fieldLabel}>City</Text>
           <Text style={[styles.pickerValue, !city && styles.pickerPlaceholder]}>
@@ -136,7 +192,6 @@ export function MyProfileScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Neighborhood */}
         {city !== '' && (
           <TouchableOpacity style={styles.fieldCard} onPress={() => setShowNeighborhoodPicker(true)}>
             <Text style={styles.fieldLabel}>Neighborhood</Text>
@@ -153,7 +208,6 @@ export function MyProfileScreen() {
         </View>
       )}
 
-      {/* City Picker Modal */}
       {showCityPicker && (
         <View style={styles.pickerModal}>
           <View style={styles.pickerSheet}>
@@ -180,7 +234,6 @@ export function MyProfileScreen() {
         </View>
       )}
 
-      {/* Neighborhood Picker Modal */}
       {showNeighborhoodPicker && (
         <View style={styles.pickerModal}>
           <View style={styles.pickerSheet}>
@@ -205,14 +258,202 @@ export function MyProfileScreen() {
           </View>
         </View>
       )}
+    </>
+  )
+}
+
+function DogProfile() {
+  const { myDogs, fetchMyDogs, isLoading } = useDogsStore()
+
+  useEffect(() => {
+    fetchMyDogs()
+  }, [fetchMyDogs])
+
+  if (isLoading) {
+    return (
+      <View style={dogStyles.emptyContainer}>
+        <Text style={dogStyles.emptyText}>Loading...</Text>
+      </View>
+    )
+  }
+
+  if (myDogs.length === 0) {
+    return (
+      <View style={dogStyles.emptyContainer}>
+        <Text style={dogStyles.emptyEmoji}>🐕</Text>
+        <Text style={dogStyles.emptyTitle}>No dogs yet</Text>
+        <Text style={dogStyles.emptyText}>
+          Your dog profile will appear here after you add a dog during onboarding.
+        </Text>
+      </View>
+    )
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {myDogs.map((dog) => (
+        <DogCard key={dog.id} dog={dog} />
+      ))}
+    </ScrollView>
+  )
+}
+
+function DogCard({ dog }: { readonly dog: Dog }) {
+  return (
+    <View style={dogStyles.card}>
+      <View style={dogStyles.cardHeader}>
+        <Avatar uri={dog.photo_url} name={dog.name} size="lg" />
+        <View style={dogStyles.cardInfo}>
+          <Text style={dogStyles.dogName}>{dog.name}</Text>
+          {dog.breed ? <Text style={dogStyles.dogBreed}>{dog.breed}</Text> : null}
+        </View>
+      </View>
+
+      <View style={dogStyles.detailsRow}>
+        {dog.gender ? (
+          <View style={dogStyles.detailChip}>
+            <Text style={dogStyles.detailText}>
+              {dog.gender === 'male' ? '♂ Male' : '♀ Female'}
+            </Text>
+          </View>
+        ) : null}
+        {dog.age_category ? (
+          <View style={dogStyles.detailChip}>
+            <Text style={dogStyles.detailText}>
+              {dog.age_category.charAt(0).toUpperCase() + dog.age_category.slice(1)}
+            </Text>
+          </View>
+        ) : null}
+        {dog.is_neutered ? (
+          <View style={dogStyles.detailChip}>
+            <Text style={dogStyles.detailText}>Neutered</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+const dogStyles = StyleSheet.create({
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxxl,
+  },
+  emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
+  emptyTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  emptyText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: fontSize.md * 1.5,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  cardInfo: {
+    marginLeft: spacing.md,
+    flex: 1,
+  },
+  dogName: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+  },
+  dogBreed: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  detailChip: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  detailText: {
+    fontSize: fontSize.xs,
+    color: colors.primaryDark,
+    fontWeight: fontWeight.medium,
+  },
+})
+
+export function MyProfileScreen() {
+  const [activeTab, setActiveTab] = useState<ProfileTab>('owner')
+  const { logout } = useAuthStore()
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: () => {
+            logout().catch(() => {
+              Alert.alert('Error', 'Failed to log out. Please try again.')
+            })
+          },
+        },
+      ],
+    )
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TabSwitcher activeTab={activeTab} onTabChange={setActiveTab} />
+        <TouchableOpacity onPress={handleLogout} activeOpacity={0.7}>
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'owner' ? <OwnerProfile /> : <DogProfile />}
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, paddingTop: spacing.lg, alignItems: 'center' },
-  title: { fontSize: fontSize.xxl, fontWeight: fontWeight.heavy, color: colors.text, letterSpacing: -0.5, marginBottom: spacing.xl, alignSelf: 'flex-start' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  logoutText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.error,
+  },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, paddingTop: spacing.md, alignItems: 'center' },
   avatarWrapper: { position: 'relative', marginBottom: spacing.md, ...shadow.md },
   cameraBadge: {
     position: 'absolute',
