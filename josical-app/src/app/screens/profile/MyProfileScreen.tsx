@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, TextInput, FlatList,
+  Alert, TextInput, FlatList, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
@@ -406,6 +406,16 @@ export function MyProfileScreen() {
   const { logout } = useAuthStore()
 
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to log out?')
+      if (confirmed) {
+        logout().catch(() => {
+          window.alert('Failed to log out. Please try again.')
+        })
+      }
+      return
+    }
+
     Alert.alert(
       'Log Out',
       'Are you sure you want to log out?',
