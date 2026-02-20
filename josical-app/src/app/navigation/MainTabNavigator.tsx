@@ -5,7 +5,7 @@ import { HomeStackNavigator } from './HomeStackNavigator'
 import { DiscoverStackNavigator } from './DiscoverStackNavigator'
 import { ConversationsScreen } from '../screens/messages/ConversationsScreen'
 import { FriendsStackNavigator } from './FriendsStackNavigator'
-import { MyProfileScreen } from '../screens/profile/MyProfileScreen'
+import { ProfileStackNavigator } from './ProfileStackNavigator'
 import { colors, fontSize } from '../../constants/theme'
 import type { MainTabParamList } from './types'
 
@@ -51,7 +51,7 @@ export function MainTabNavigator() {
       <Tab.Screen name="Discover" component={DiscoverStackNavigator} />
       <Tab.Screen name="Messages" component={ConversationsScreen} />
       <Tab.Screen name="Friends" component={FriendsStackNavigator} />
-      <Tab.Screen name="Profile" component={MyProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   )
 }

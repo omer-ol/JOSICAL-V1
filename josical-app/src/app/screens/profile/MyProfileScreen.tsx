@@ -4,7 +4,10 @@ import {
   Alert, TextInput, FlatList, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useAuthStore } from '../../../stores/authStore'
 import { useProfileStore } from '../../../stores/profileStore'
 import { useDogsStore } from '../../../stores/dogsStore'
@@ -15,6 +18,7 @@ import { getCityNames, getNeighborhoods, getLocationCoords } from '../../../cons
 import { DOG_BREEDS } from '../../../constants/breeds'
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadow } from '../../../constants/theme'
 import type { Dog } from '../../../types'
+import type { ProfileStackParamList } from '../../navigation/types'
 
 type ProfileTab = 'owner' | 'dog'
 
@@ -821,43 +825,14 @@ const dogStyles = StyleSheet.create({
 
 export function MyProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('owner')
-  const { logout } = useAuthStore()
-
-  const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to log out?')
-      if (confirmed) {
-        logout().catch(() => {
-          window.alert('Failed to log out. Please try again.')
-        })
-      }
-      return
-    }
-
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: () => {
-            logout().catch(() => {
-              Alert.alert('Error', 'Failed to log out. Please try again.')
-            })
-          },
-        },
-      ],
-    )
-  }
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>()
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TabSwitcher activeTab={activeTab} onTabChange={setActiveTab} />
-        <TouchableOpacity onPress={handleLogout} activeOpacity={0.7}>
-          <Text style={styles.logoutText}>Log Out</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Settings')} activeOpacity={0.7}>
+          <Ionicons name="settings-outline" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -878,10 +853,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
   },
-  logoutText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    color: colors.error,
+  settingsButton: {
+    padding: spacing.xs,
   },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, paddingTop: spacing.md, alignItems: 'center' },
   avatarWrapper: { position: 'relative', marginBottom: spacing.md, ...shadow.md },
