@@ -52,6 +52,10 @@ logs/
 coverage/
 .nyc_output/
 
+# Playwright test screenshots
+*.png
+!josical-app/assets/*.png
+
 # Misc
 *.pem
 
