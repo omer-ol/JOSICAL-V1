@@ -61,10 +61,13 @@ export const useDogsStore = create<DogsState & DogsActions>((set) => ({
   },
 
   updateDog: async (id, data) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
     const { data: dog, error } = await supabase
       .from('dogs')
       .update(data)
       .eq('id', id)
+      .eq('owner_id', user.id)
       .select()
       .single()
     if (error) throw error
@@ -75,7 +78,9 @@ export const useDogsStore = create<DogsState & DogsActions>((set) => ({
   },
 
   deleteDog: async (id) => {
-    const { error } = await supabase.from('dogs').delete().eq('id', id)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    const { error } = await supabase.from('dogs').delete().eq('id', id).eq('owner_id', user.id)
     if (error) throw error
     set((state) => ({ myDogs: state.myDogs.filter((d) => d.id !== id) }))
   },

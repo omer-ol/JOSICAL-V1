@@ -3,11 +3,16 @@ import { supabase } from '../lib/supabase'
 import type { UserProfile } from '../types'
 import type { Session } from '@supabase/supabase-js'
 
+const MAX_AUTH_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 60_000
+
 type AuthState = {
   readonly session: Session | null
   readonly profile: UserProfile | null
   readonly isLoading: boolean
   readonly isInitialized: boolean
+  readonly loginAttempts: number
+  readonly lockoutUntil: number | null
 }
 
 type AuthActions = {
@@ -21,11 +26,20 @@ type AuthActions = {
   readonly resetPassword: (email: string) => Promise<void>
 }
 
+const checkRateLimit = (attempts: number, lockoutUntil: number | null): void => {
+  if (lockoutUntil && Date.now() < lockoutUntil) {
+    const secondsLeft = Math.ceil((lockoutUntil - Date.now()) / 1000)
+    throw new Error(`Too many attempts. Please wait ${secondsLeft} seconds.`)
+  }
+}
+
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   session: null,
   profile: null,
   isLoading: false,
   isInitialized: false,
+  loginAttempts: 0,
+  lockoutUntil: null,
 
   initialize: async () => {
     try {
@@ -67,11 +81,21 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   },
 
   login: async (email, password) => {
+    const { loginAttempts, lockoutUntil } = get()
+    checkRateLimit(loginAttempts, lockoutUntil)
+
     set({ isLoading: true })
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      set({ session: data.session })
+      if (error) {
+        const newAttempts = loginAttempts + 1
+        const newLockout = newAttempts >= MAX_AUTH_ATTEMPTS
+          ? Date.now() + LOCKOUT_DURATION_MS
+          : null
+        set({ loginAttempts: newAttempts, lockoutUntil: newLockout })
+        throw error
+      }
+      set({ session: data.session, loginAttempts: 0, lockoutUntil: null })
       await get().fetchProfile()
     } finally {
       set({ isLoading: false })
@@ -81,7 +105,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   logout: async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
-    set({ session: null, profile: null })
+    set({ session: null, profile: null, loginAttempts: 0, lockoutUntil: null })
   },
 
   fetchProfile: async () => {
@@ -99,14 +123,24 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   setProfile: (profile) => set({ profile }),
 
   loginWithGoogle: async (idToken) => {
+    const { loginAttempts, lockoutUntil } = get()
+    checkRateLimit(loginAttempts, lockoutUntil)
+
     set({ isLoading: true })
     try {
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
       })
-      if (error) throw error
-      set({ session: data.session })
+      if (error) {
+        const newAttempts = loginAttempts + 1
+        const newLockout = newAttempts >= MAX_AUTH_ATTEMPTS
+          ? Date.now() + LOCKOUT_DURATION_MS
+          : null
+        set({ loginAttempts: newAttempts, lockoutUntil: newLockout })
+        throw error
+      }
+      set({ session: data.session, loginAttempts: 0, lockoutUntil: null })
       if (data.session) {
         await get().fetchProfile()
       }
@@ -116,7 +150,17 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   },
 
   resetPassword: async (email) => {
+    const { loginAttempts, lockoutUntil } = get()
+    checkRateLimit(loginAttempts, lockoutUntil)
+
     const { error } = await supabase.auth.resetPasswordForEmail(email)
-    if (error) throw error
+    if (error) {
+      const newAttempts = loginAttempts + 1
+      const newLockout = newAttempts >= MAX_AUTH_ATTEMPTS
+        ? Date.now() + LOCKOUT_DURATION_MS
+        : null
+      set({ loginAttempts: newAttempts, lockoutUntil: newLockout })
+      throw error
+    }
   },
 }))

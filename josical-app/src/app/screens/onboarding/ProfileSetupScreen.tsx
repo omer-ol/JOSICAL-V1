@@ -51,7 +51,7 @@ export function ProfileSetupScreen({ navigation }: Props) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
     const ext = uri.split('.').pop() ?? 'jpg'
-    const path = `avatars/${user.id}.${ext}`
+    const path = `${user.id}/avatar.${ext}`
     const response = await fetch(uri)
     const blob = await response.blob()
     const arrayBuffer = await blob.arrayBuffer()
