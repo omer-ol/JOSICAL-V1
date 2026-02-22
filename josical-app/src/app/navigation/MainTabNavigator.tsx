@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { HomeStackNavigator } from './HomeStackNavigator'
 import { DiscoverStackNavigator } from './DiscoverStackNavigator'
-import { ConversationsScreen } from '../screens/messages/ConversationsScreen'
+import { MessagesStackNavigator } from './MessagesStackNavigator'
 import { FriendsStackNavigator } from './FriendsStackNavigator'
 import { ProfileStackNavigator } from './ProfileStackNavigator'
 import { colors, fontSize } from '../../constants/theme'
@@ -49,7 +49,7 @@ export function MainTabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStackNavigator} />
       <Tab.Screen name="Discover" component={DiscoverStackNavigator} />
-      <Tab.Screen name="Messages" component={ConversationsScreen} />
+      <Tab.Screen name="Messages" component={MessagesStackNavigator} />
       <Tab.Screen name="Friends" component={FriendsStackNavigator} />
       <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>

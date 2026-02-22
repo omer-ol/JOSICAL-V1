@@ -60,6 +60,9 @@ export type MainTabProps<T extends keyof MainTabParamList> =
 export type DiscoverScreenProps<T extends keyof DiscoverStackParamList> =
   NativeStackScreenProps<DiscoverStackParamList, T>
 
+export type MessagesScreenProps<T extends keyof MessagesStackParamList> =
+  NativeStackScreenProps<MessagesStackParamList, T>
+
 export type FriendsScreenProps<T extends keyof FriendsStackParamList> =
   NativeStackScreenProps<FriendsStackParamList, T>
 
